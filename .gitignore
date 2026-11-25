@@ -1,0 +1,9 @@
+# Secrets: NEVER commit these
+.env
+.env.*
+!.env.example
+# Installed by Composer
+/vendor/
+
+# Runtime data (sessions, logs)
+/storage/logs/
