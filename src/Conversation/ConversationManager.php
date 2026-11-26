@@ -41,10 +41,22 @@ final class ConversationManager
     /**
      * Handles an incoming user message.
      *
+     * Commands must be left for the Router, so they cannot accidentally
+     * become answers to a registration step. The /cancel command is the
+     * only command handled by an active conversation.
+     *
      * Returns true if an active conversation handled the message.
      */
     public function handle(Context $context, string $input): bool
     {
+        $command = $context->command();
+
+        // Important: don't consume /start, /help, /products, /register, etc.
+        // Let the normal Router dispatch those commands.
+        if ($command !== null && $command !== 'cancel') {
+            return false;
+        }
+
         $session = $context->session();
 
         if (!$session->has(self::SESSION_KEY)) {
@@ -75,8 +87,8 @@ final class ConversationManager
             return false;
         }
 
-        // Handle cancellation.
-        if (trim($input) === '/cancel') {
+        // Handle cancellation, including /cancel@BotName.
+        if ($command === 'cancel') {
             $conversation->onCancel($context);
             $session->delete(self::SESSION_KEY);
 
@@ -116,7 +128,7 @@ final class ConversationManager
             $data = [];
         }
 
-        // Validate user input.
+        // Validate the user's input.
         $result = $step->validate($input, $context, $data);
 
         if ($result !== true) {
