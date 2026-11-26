@@ -150,12 +150,11 @@ $bot->command('myname', function (Context $ctx) {
     $ctx->reply("Your name is: {$name}");
 });
 $bot->command('language', function (Context $ctx) use ($translate): void {
-    $keyboard = new InlineKeyboard([
-        [
+    $keyboard = (new InlineKeyboard())
+        ->row(
             Button::callback('🇬🇧 English', 'language:en'),
-            Button::callback('🇮🇷 فارسی', 'language:fa'),
-        ],
-    ]);
+            Button::callback('🇮🇷 فارسی', 'language:fa')
+        );
 
     $ctx->reply($translate($ctx, 'choose_language'), [
         'keyboard' => $keyboard,
