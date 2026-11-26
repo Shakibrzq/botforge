@@ -14,7 +14,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Botforge\\": "src/"
+            "Botforge\\": "src/",
+            "DemoBot\\": "examples/demo-bot/"
         }
     },
     "config": {

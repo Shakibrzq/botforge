@@ -20,6 +20,9 @@ use Closure;
 use LogicException;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use Botforge\Storage\StorageInterface;
+use Botforge\Conversation\Conversation;
+use Botforge\Conversation\ConversationManager;
 
 /**
  * The front door of the framework. You create one Bot, tell it what to do, and call run().
@@ -35,6 +38,8 @@ final class Bot
     private readonly LoggerInterface $logger;
     private readonly Pipeline $pipeline;
     private readonly Router $router;
+    private readonly StorageInterface $storage;
+    private readonly ConversationManager $conversationManager;
 
     /** @var list<Middleware|Closure|string> Global middleware: wraps EVERY update */
     private array $middleware;
@@ -56,6 +61,8 @@ final class Bot
         $this->logger = $this->container->get(LoggerInterface::class);
         $this->pipeline = $this->container->get(Pipeline::class);
         $this->router = $this->container->get(Router::class);
+        $this->storage = $this->container->get(StorageInterface::class);
+        $this->conversationManager = new ConversationManager();
 
         // Logging is always the OUTERMOST layer, so it sees every update and every failure.
         $this->middleware = [new LoggingMiddleware($this->logger)];
@@ -70,7 +77,16 @@ final class Bot
     {
         return $this->container;
     }
-
+    /**
+ * Starts a conversation for the current user.
+ */
+public function startConversation(
+    Context $context,
+    Conversation $conversation,
+): void {
+    $this->conversationManager->start($context, $conversation);
+}
+  
     public function telegram(): TelegramClient
     {
         return $this->telegram;
@@ -188,15 +204,28 @@ final class Bot
     public function handle(Update $update): void
     {
         //برای اپدیت یک کانتکست میسازه
-        
-        $ctx = new Context($update, $this->telegram);
+
+        $ctx = new Context($update, $this->telegram, $this->storage);
 
         try {
             $this->pipeline->run(
-                $ctx,
-                $this->middleware,
-                fn (Context $ctx): bool => $this->router->dispatch($ctx)
-            );
+    $ctx,
+    $this->middleware,
+    function (Context $ctx): bool {
+        // Check whether the user has an active conversation.
+        if (
+            $ctx->text() !== null
+            && $this->conversationManager->handle($ctx, $ctx->text())
+        ) {
+            return true;
+        }
+
+        // If no active conversation handled the message,
+        // continue with normal routing.
+        return $this->router->dispatch($ctx);
+    }
+);
+            
         } catch (Throwable) {
             // LoggingMiddleware (the outermost layer) has already written the error to the log.
             // We must not let it escape: in webhook mode it would become an HTTP 500 error, and
@@ -208,6 +237,8 @@ final class Bot
      * Starts the bot the right way for where it runs:
      * in a terminal (CLI) -> long polling; behind a web server (PHP-FPM, Apache, ...) -> webhook.
      */
+    //اکه تو سی ال ای ایندکسو اجرا کنم بات با لانگ پولینگ اجرا میشه و اپدیت میگیره
+    //اگه رو سرور اجرا کنیم ینی قبلش وب هوک ست کرده باشیم اپدیت از طریق وب هوک میاد
     public function run(): void
     {
         if (PHP_SAPI === 'cli') {

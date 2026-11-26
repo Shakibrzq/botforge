@@ -13,6 +13,13 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
+use Botforge\Storage\FileStorage;
+use Botforge\Storage\PdoStorage;
+use Botforge\Storage\RedisStorage;
+use Botforge\Storage\StorageInterface;
+use PDO;
+use Redis;
+use RuntimeException;
 
 /**
  * Registers the basic things every bot needs: Config, Telegram client, logger, pipeline and router.
@@ -52,14 +59,86 @@ final class CoreServiceProvider implements ServiceProvider
         // "Class name -> same class name" means: build it by autowiring, but only once.
         $container->singleton(Pipeline::class, Pipeline::class);
         $container->singleton(Router::class, Router::class);
+        $container->singleton(
+            StorageInterface::class,
+            fn (): StorageInterface => $this->createStorage()
+);
+    
     }
+private function createStorage(): StorageInterface
+{
+    return match ($this->config->storageDriver) {
+        'file' => new FileStorage(
+            $this->config->storagePath . '/sessions'
+        ),
+
+        'redis' => $this->createRedisStorage(),
+
+        'pdo' => $this->createPdoStorage(),
+
+        default => throw new RuntimeException(
+            'Unsupported storage driver.'
+        ),
+    };
+}
+private function createRedisStorage(): RedisStorage
+{
+    if (!class_exists(Redis::class)) {
+        throw new RuntimeException(
+            'PHP Redis extension is not installed.'
+        );
+    }
+
+    $redis = new Redis();
+
+    if (!$redis->connect(
+        $this->config->redisHost,
+        $this->config->redisPort
+    )) {
+        throw new RuntimeException(
+            'Could not connect to Redis.'
+        );
+    }
+
+    if ($this->config->redisPassword !== null) {
+        if (!$redis->auth($this->config->redisPassword)) {
+            throw new RuntimeException(
+                'Redis authentication failed.'
+            );
+        }
+    }
+
+    return new RedisStorage($redis);
+}
+
+    //اطلاعات دیتابیس رو میسازه و به پی دی او استورج تحویل میدع
+    private function createPdoStorage(): PdoStorage
+{
+    if ($this->config->dbDsn === null) {
+        throw new RuntimeException(
+            'DB_DSN is not configured.'
+        );
+    }
+
+    $pdo = new PDO(
+        $this->config->dbDsn,
+        $this->config->dbUser,
+        $this->config->dbPassword,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]
+    );
+
+    return new PdoStorage($pdo);
+}
+
 //لاگ هارو میزاره تو استورجی که تو کانفیگ تعیین کردیم
 // زمانیکه بات دات پی اچ پی 
 // دستور زیر رو اجرا میکنه
 //$this->container->register(
 //     new CoreServiceProvider($config, $telegram, $logger)
 // );
-
     private function createLogger(): LoggerInterface
     {
         $level = Level::fromName($this->config->logLevel);

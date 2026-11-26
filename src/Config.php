@@ -26,6 +26,12 @@ final class Config
         'STORAGE_PATH',
         'PARSE_MODE',
         'LOG_LEVEL',
+        'REDIS_HOST',
+        'REDIS_PORT',
+        'REDIS_PASSWORD',
+        'DB_DSN',
+        'DB_USER',
+        'DB_PASSWORD',
     ];
 
     public readonly string $token;
@@ -39,6 +45,13 @@ final class Config
     public readonly string $storagePath;
     public readonly ?string $parseMode;
     public readonly string $logLevel;
+    public readonly string $redisHost;
+    public readonly int $redisPort;
+    public readonly ?string $redisPassword;
+
+public readonly ?string $dbDsn;
+public readonly ?string $dbUser;
+public readonly ?string $dbPassword;
 
     /**
      * @param array<string, string|null> $values Raw settings, keyed by name (e.g. BOT_TOKEN).
@@ -56,6 +69,35 @@ final class Config
             ['file', 'redis', 'pdo']
         );
         $this->storagePath = self::emptyToNull($values['STORAGE_PATH'] ?? null) ?? 'storage';
+        $this->redisHost = self::emptyToNull(
+    $values['REDIS_HOST'] ?? null
+) ?? '127.0.0.1';
+
+$redisPort = self::emptyToNull(
+    $values['REDIS_PORT'] ?? null
+) ?? '6379';
+
+if (!ctype_digit($redisPort) || (int) $redisPort < 1 || (int) $redisPort > 65535) {
+    throw new ConfigException('REDIS_PORT must be a valid port between 1 and 65535.');
+}
+
+$this->redisPort = (int) $redisPort;
+
+$this->redisPassword = self::emptyToNull(
+    $values['REDIS_PASSWORD'] ?? null
+);
+
+$this->dbDsn = self::emptyToNull(
+    $values['DB_DSN'] ?? null
+);
+
+$this->dbUser = self::emptyToNull(
+    $values['DB_USER'] ?? null
+);
+
+$this->dbPassword = self::emptyToNull(
+    $values['DB_PASSWORD'] ?? null
+);
 
         $parseMode = self::parseChoice(
             'PARSE_MODE',

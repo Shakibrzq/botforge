@@ -17,6 +17,7 @@ use Botforge\Context\Context;
 use Botforge\Keyboard\Button;
 use Botforge\Keyboard\Keyboard;
 use Botforge\Support\Html;
+use DemoBot\RegisterConversation;
 
 try {
     $config = Config::fromEnv(dirname(__DIR__, 2));
@@ -32,6 +33,10 @@ $mainMenu = static fn () => Keyboard::inline()->row(
     Button::callback('Profile', 'profile'),
     Button::callback('Help', 'help')
 );
+
+$bot->command('register', function (Context $ctx) use ($bot): void {
+    $bot->startConversation($ctx, new RegisterConversation());
+});
 
 $bot->command('start', function (Context $ctx, string $payload = '') use ($mainMenu): void {
     $text = 'Hello, ' . Html::bold($ctx->from()?->firstName ?? 'friend') . '!';
@@ -63,6 +68,20 @@ $bot->callback('menu', function (Context $ctx) use ($mainMenu): void {
 $bot->callback('help', function (Context $ctx): void {
     $ctx->answerCallback();
     $ctx->reply('Send me any text and I will repeat it.');
+});
+
+$bot->command('name', function (Context $ctx) {
+    $session = $ctx->session();
+
+    $session->set('name', 'Shakiba');
+
+    $ctx->reply('Name saved!');
+});
+
+$bot->command('myname', function (Context $ctx) {
+    $name = $ctx->session()->get('name', 'Unknown');
+
+    $ctx->reply("Your name is: {$name}");
 });
 
 // Any other text message: repeat it. Html::escape protects us from "<" and "&" in what people write.

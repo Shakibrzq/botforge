@@ -11,6 +11,8 @@ use Botforge\Entities\Message;
 use Botforge\Entities\Update;
 use Botforge\Entities\User;
 use LogicException;
+use Botforge\Storage\Session;
+use Botforge\Storage\StorageInterface;
 
 /**
  * The toolbox handed to every handler. It wraps ONE update and the Telegram client,
@@ -24,6 +26,8 @@ final class Context
     public function __construct(
         private readonly Update $update,
         private readonly TelegramClient $telegram,
+        private readonly StorageInterface $storage,
+
     ) {
     }
 
@@ -41,7 +45,28 @@ final class Context
     {
         return $this->telegram;
     }
+    public function session(): Session
+    {
+        $chat = $this->chat();
+        $user = $this->from();
 
+        if ($chat === null || $user === null) {
+            throw new LogicException(
+                'Session is only available for updates with a chat and a user.'
+            );
+        }
+
+        $key = sprintf(
+            'session:chat:%d:user:%d',
+            $chat->id,
+            $user->id
+        );
+
+        return new Session(
+            storage: $this->storage,
+            key: $key,
+        );
+}
     public function from(): ?User
     {
         return $this->update->from();
