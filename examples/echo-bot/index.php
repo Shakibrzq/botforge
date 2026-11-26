@@ -145,8 +145,10 @@ $bot->command('myname', function (Context $ctx) {
     $ctx->reply("Your name is: {$name}");
 });
 
-$bot->command('language', function (Context $ctx) use ($translate): void {
-    $ctx->reply($translate($ctx, 'choose_language'));
+$bot->command('language', function (Context $ctx): void {
+    $language = $ctx->session()->get('language', 'en');
+
+    $ctx->reply('Language: ' . $language);
 });
 
 
