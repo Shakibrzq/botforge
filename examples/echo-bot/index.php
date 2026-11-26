@@ -69,7 +69,17 @@ $showProductsPage = static function (
 $bot->command('products', function (Context $ctx) use ($showProductsPage): void {
     $showProductsPage($ctx, 1);
 });
+$bot->callback('products:page:{page}', function (
+    Context $ctx,
+    string $page
+) use ($showProductsPage): void {
 
+    // متوقف کردن لودینگ دکمه در تلگرام
+    $ctx->answerCallback();
+
+    // نمایش صفحه انتخاب‌شده با ویرایش پیام قبلی
+    $showProductsPage($ctx, (int) $page, true);
+});
 // A function that makes a NEW keyboard each time (keyboards are not meant to be shared).
 $mainMenu = static fn () => Keyboard::inline()->row(
     Button::callback('Profile', 'profile'),
