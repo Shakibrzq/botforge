@@ -2,14 +2,6 @@
 
 declare(strict_types=1);
 
-// این فایل مسئول راه اندازی بات با لانگ پولینگ است
-// A small REAL bot. It needs a real BOT_TOKEN in .env and access to Telegram.
-//
-//   In a terminal:     php examples/echo-bot/index.php     (long polling; stop with Ctrl+C)
-//   Behind a web server: point the webhook URL to this file (webhook mode)
-//
-// Bot::run() picks the right mode by itself.
-
 require __DIR__ . '/../../vendor/autoload.php';
 
 use Botforge\Bot;
@@ -19,7 +11,7 @@ use Botforge\Keyboard\Button;
 use Botforge\Keyboard\Keyboard;
 use Botforge\Support\Html;
 use DemoBot\RegisterConversation;
-use Botforge\Keyboard\InlineKeyboard;
+
 try {
     $config = Config::fromEnv(dirname(__DIR__, 2));
 } catch (Botforge\ConfigException $e) {
@@ -29,7 +21,17 @@ try {
 
 $bot = new Bot($config);
 
-$translate = static function (Context $ctx, string $key): string {
+
+// ==========================================
+// TRANSLATION
+// ==========================================
+
+$translate = static function (
+    Context $ctx,
+    string $key,
+    array $replace = []
+): string {
+
     $language = $ctx->session()->get('language', 'en');
 
     $translations = [
@@ -37,10 +39,45 @@ $translate = static function (Context $ctx, string $key): string {
         'fa' => require __DIR__ . '/langfa.php',
     ];
 
-    return $translations[$language][$key]
+    $text = $translations[$language][$key]
         ?? $translations['en'][$key]
         ?? $key;
+
+    foreach ($replace as $placeholder => $value) {
+        $text = str_replace(
+            ':' . $placeholder,
+            (string) $value,
+            $text
+        );
+    }
+
+    return $text;
 };
+
+
+// ==========================================
+// MAIN MENU
+// ==========================================
+
+$mainMenu = static fn () => Keyboard::inline()->row(
+    Button::callback('Profile', 'profile'),
+    Button::callback('Help', 'help')
+);
+
+
+// ==========================================
+// HELP
+// ==========================================
+
+$showHelp = static function (Context $ctx) use ($translate): void {
+    $ctx->reply($translate($ctx, 'help'));
+};
+
+
+// ==========================================
+// PRODUCTS
+// ==========================================
+
 $products = [
     101 => 'Laptop',
     102 => 'Mobile Phone',
@@ -60,19 +97,33 @@ $showProductsPage = static function (
     Context $ctx,
     int $page,
     bool $edit = false
-) use ($products): void {
+) use ($products, $translate): void {
+
+    $perPage = 5;
+
+    $totalPages = max(
+        1,
+        (int) ceil(count($products) / $perPage)
+    );
+
+    $page = min(max($page, 1), $totalPages);
 
     $keyboard = Keyboard::paginate(
         items: $products,
         page: $page,
-        perPage: 5,
+        perPage: $perPage,
         prefix: 'products',
         columns: 2
     );
 
-    $totalPages = max(1, (int) ceil(count($products) / 5));
+    $title = $translate($ctx, 'products_title');
 
-    $text = "Our Products\nPage {$page} of {$totalPages}";
+    $pageText = $translate($ctx, 'products_page', [
+        'page' => $page,
+        'total' => $totalPages,
+    ]);
+
+    $text = $title . "\n" . $pageText;
 
     if ($edit) {
         $ctx->edit($text, ['keyboard' => $keyboard]);
@@ -80,110 +131,203 @@ $showProductsPage = static function (
         $ctx->reply($text, ['keyboard' => $keyboard]);
     }
 };
-$bot->command('products', function (Context $ctx) use ($showProductsPage): void {
-    $showProductsPage($ctx, 1);
-});
-$bot->callback('products:page:{page}', function (
+
+
+// ==========================================
+// START COMMAND
+// ==========================================
+
+$bot->command('start', function (
     Context $ctx,
-    string $page
-) use ($showProductsPage): void {
+    string $payload = ''
+) use ($mainMenu, $translate): void {
 
-    // متوقف کردن لودینگ دکمه در تلگرام
-    $ctx->answerCallback();
-
-    // نمایش صفحه انتخاب‌شده با ویرایش پیام قبلی
-    $showProductsPage($ctx, (int) $page, true);
-});
-// A function that makes a NEW keyboard each time (keyboards are not meant to be shared).
-$mainMenu = static fn () => Keyboard::inline()->row(
-    Button::callback('Profile', 'profile'),
-    Button::callback('Help', 'help')
-);
-
-$bot->command('register', function (Context $ctx) use ($bot): void {
-    $bot->startConversation($ctx, new RegisterConversation());
-});
-
-$bot->command('start', function (Context $ctx, string $payload = '') use ($mainMenu): void {
-    $text = 'Hello, ' . Html::bold($ctx->from()?->firstName ?? 'friend') . '!';
+    $text = $translate($ctx, 'welcome');
 
     if ($payload !== '') {
         $text .= "\nYou came with the code: " . Html::code($payload);
     }
 
-    $ctx->reply($text, ['keyboard' => $mainMenu()]);
+    $ctx->reply($text, [
+        'keyboard' => $mainMenu(),
+    ]);
 });
 
+
+// ==========================================
+// HELP COMMAND
+// ==========================================
+
+$bot->command('help', function (Context $ctx) use ($showHelp): void {
+    $showHelp($ctx);
+});
+
+
+// ==========================================
+// REGISTER COMMAND
+// ==========================================
+
+$bot->command('register', function (Context $ctx) use ($bot): void {
+    $bot->startConversation($ctx, new RegisterConversation());
+});
+
+
+// ==========================================
+// PRODUCTS COMMAND
+// ==========================================
+
+$bot->command('products', function (
+    Context $ctx
+) use ($showProductsPage): void {
+
+    $showProductsPage($ctx, 1);
+});
+
+$bot->callback('products:page:{page}', function (
+    Context $ctx,
+    string $page
+) use ($showProductsPage): void {
+
+    $ctx->answerCallback();
+
+    $showProductsPage($ctx, (int) $page, true);
+});
+
+
+// ==========================================
+// PROFILE CALLBACK
+// ==========================================
+
 $bot->callback('profile', function (Context $ctx): void {
-    $ctx->answerCallback(); // stops the loading spinner on the button
+
+    $ctx->answerCallback();
 
     $user = $ctx->from();
-    $username = $user?->username !== null ? Html::escape('@' . $user->username) : 'none';
+
+    $username = $user?->username !== null
+        ? Html::escape('@' . $user->username)
+        : 'none';
 
     $ctx->edit(
-        Html::bold('Your profile') . "\nName: " . Html::escape($user?->fullName() ?? '?') . "\nUsername: " . $username,
-        ['keyboard' => Keyboard::inline()->row(Button::callback('« Back', 'menu'))]
+        Html::bold('Your profile')
+        . "\nName: " . Html::escape($user?->fullName() ?? '?')
+        . "\nUsername: " . $username,
+        [
+            'keyboard' => Keyboard::inline()->row(
+                Button::callback('« Back', 'menu')
+            ),
+        ]
     );
 });
 
-$bot->callback('menu', function (Context $ctx) use ($mainMenu): void {
+
+// ==========================================
+// MENU CALLBACK
+// ==========================================
+
+$bot->callback('menu', function (
+    Context $ctx
+) use ($mainMenu): void {
+
     $ctx->answerCallback();
-    $ctx->edit('Choose an option:', ['keyboard' => $mainMenu()]);
+
+    $ctx->edit('Choose an option:', [
+        'keyboard' => $mainMenu(),
+    ]);
 });
 
-$bot->callback('help', function (Context $ctx): void {
+
+// ==========================================
+// HELP CALLBACK
+// ==========================================
+
+$bot->callback('help', function (
+    Context $ctx
+) use ($showHelp): void {
+
     $ctx->answerCallback();
-    $ctx->reply('Send me any text and I will repeat it.');
+
+    $showHelp($ctx);
 });
 
-$bot->command('name', function (Context $ctx) {
-    $session = $ctx->session();
 
-    $session->set('name', 'Shakiba');
+// ==========================================
+// NAME COMMANDS
+// ==========================================
+
+$bot->command('name', function (Context $ctx): void {
+
+    $ctx->session()->set('name', 'Shakiba');
 
     $ctx->reply('Name saved!');
 });
 
-$bot->command('myname', function (Context $ctx) {
+$bot->command('myname', function (Context $ctx): void {
+
     $name = $ctx->session()->get('name', 'Unknown');
 
     $ctx->reply("Your name is: {$name}");
 });
-$bot->command('language', function (Context $ctx) use ($translate): void {
-    $keyboard = Keyboard::inline()
-        ->row(
-            Button::callback('🇬🇧 English', 'language:en'),
-            Button::callback('🇮🇷 فارسی', 'language:fa')
-        );
+
+
+// ==========================================
+// LANGUAGE COMMAND
+// ==========================================
+
+$bot->command('language', function (
+    Context $ctx
+) use ($translate): void {
+
+    $keyboard = Keyboard::inline()->row(
+        Button::callback('🇬🇧 English', 'language:en'),
+        Button::callback('🇮🇷 فارسی', 'language:fa')
+    );
 
     $ctx->reply(
         $translate($ctx, 'choose_language'),
         ['keyboard' => $keyboard]
     );
 });
+
+
+// ==========================================
+// LANGUAGE CALLBACK
+// ==========================================
+
 $bot->callback('language:{language}', function (
     Context $ctx,
     string $language
 ) use ($translate): void {
 
-    // بررسی زبان انتخاب‌شده
     if (!in_array($language, ['en', 'fa'], true)) {
         $ctx->answerCallback();
         return;
     }
 
-    // ذخیره زبان انتخاب‌شده در Session
     $ctx->session()->set('language', $language);
 
-    // متوقف کردن لودینگ دکمه در تلگرام
     $ctx->answerCallback();
 
-    // نمایش پیام تأیید به زبان انتخاب‌شده
     $ctx->reply($translate($ctx, 'language_changed'));
 });
 
 
-// Any other text message: repeat it. Html::escape protects us from "<" and "&" in what people write.
-$bot->on('text', fn (Context $ctx) => $ctx->reply('You said: ' . Html::escape($ctx->text() ?? '')));
+// ==========================================
+// TEXT HANDLER
+// ==========================================
+
+$bot->on('text', function (Context $ctx): void {
+
+    $text = $ctx->text() ?? '';
+
+    $ctx->reply(
+        'You said: ' . Html::escape($text)
+    );
+});
+
+
+// ==========================================
+// RUN BOT
+// ==========================================
 
 $bot->run();
