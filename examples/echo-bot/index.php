@@ -18,7 +18,7 @@ use Botforge\Keyboard\Button;
 use Botforge\Keyboard\Keyboard;
 use Botforge\Support\Html;
 use DemoBot\RegisterConversation;
-
+use Botforge\Keyboard\InlineKeyboard;
 try {
     $config = Config::fromEnv(dirname(__DIR__, 2));
 } catch (Botforge\ConfigException $e) {
@@ -27,6 +27,14 @@ try {
 }
 
 $bot = new Bot($config);
+
+$translate = static function (Context $ctx, string $key): string {
+    $language = $ctx->session()->get('language', 'en');
+
+    $translations = require __DIR__ . '/lang/' . $language . '.php';
+
+    return $translations[$key] ?? $key;
+};
 $products = [
     101 => 'Laptop',
     102 => 'Mobile Phone',
@@ -134,6 +142,20 @@ $bot->command('myname', function (Context $ctx) {
     $name = $ctx->session()->get('name', 'Unknown');
 
     $ctx->reply("Your name is: {$name}");
+});
+
+$bot->command('language', function (Context $ctx) use ($translate): void {
+    $keyboard = new InlineKeyboard([
+        [
+            Button::callback('🇬🇧 English', 'language:en'),
+            Button::callback('🇮🇷 فارسی', 'language:fa'),
+        ],
+    ]);
+
+    $ctx->reply(
+        $translate($ctx, 'choose_language'),
+        ['keyboard' => $keyboard]
+    );
 });
 
 // Any other text message: repeat it. Html::escape protects us from "<" and "&" in what people write.
