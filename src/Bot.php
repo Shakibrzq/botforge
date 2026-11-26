@@ -226,10 +226,9 @@ public function startConversation(
     }
 );
             
-        } catch (Throwable) {
-            // LoggingMiddleware (the outermost layer) has already written the error to the log.
-            // We must not let it escape: in webhook mode it would become an HTTP 500 error, and
-            // Telegram would send the same failing update again and again.
+        } catch (Throwable $e) {
+            echo $e->getMessage() . PHP_EOL;
+            echo $e->getTraceAsString() . PHP_EOL;
         }
     }
 

@@ -33,8 +33,8 @@ $translate = static function (Context $ctx, string $key): string {
     $language = $ctx->session()->get('language', 'en');
 
     $translations = [
-        'en' => require __DIR__ . '/lang/en.php',
-        'fa' => require __DIR__ . '/lang/fa.php',
+        'en' => require __DIR__ . '/langen.php',
+        'fa' => require __DIR__ . '/langfa.php',
     ];
 
     return $translations[$language][$key]
