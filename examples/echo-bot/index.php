@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 // این فایل مسئول راه اندازی بات با لانگ پولینگ است
 // A small REAL bot. It needs a real BOT_TOKEN in .env and access to Telegram.
 //
@@ -144,19 +145,10 @@ $bot->command('myname', function (Context $ctx) {
     $ctx->reply("Your name is: {$name}");
 });
 
-$bot->command('language', function (Context $ctx) use ($translate): void {
-    $keyboard = new InlineKeyboard([
-        [
-            Button::callback('🇬🇧 English', 'language:en'),
-            Button::callback('🇮🇷 فارسی', 'language:fa'),
-        ],
-    ]);
-
-    $ctx->reply(
-        $translate($ctx, 'choose_language'),
-        ['keyboard' => $keyboard]
-    );
+$bot->command('language', function (Context $ctx): void {
+    $ctx->reply('Language command reached!');
 });
+
 
 // Any other text message: repeat it. Html::escape protects us from "<" and "&" in what people write.
 $bot->on('text', fn (Context $ctx) => $ctx->reply('You said: ' . Html::escape($ctx->text() ?? '')));
