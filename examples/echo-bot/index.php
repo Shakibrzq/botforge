@@ -161,6 +161,26 @@ $bot->command('language', function (Context $ctx) use ($translate): void {
         ['keyboard' => $keyboard]
     );
 });
+$bot->callback('language:{language}', function (
+    Context $ctx,
+    string $language
+) use ($translate): void {
+
+    // بررسی زبان انتخاب‌شده
+    if (!in_array($language, ['en', 'fa'], true)) {
+        $ctx->answerCallback();
+        return;
+    }
+
+    // ذخیره زبان انتخاب‌شده در Session
+    $ctx->session()->set('language', $language);
+
+    // متوقف کردن لودینگ دکمه در تلگرام
+    $ctx->answerCallback();
+
+    // نمایش پیام تأیید به زبان انتخاب‌شده
+    $ctx->reply($translate($ctx, 'language_changed'));
+});
 
 
 // Any other text message: repeat it. Html::escape protects us from "<" and "&" in what people write.
