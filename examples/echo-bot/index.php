@@ -42,7 +42,12 @@ $products = [
     112 => 'Power Bank',
 ];
 
-$showProductsPage = static function (Context $ctx, int $page) use ($products): void {
+$showProductsPage = static function (
+    Context $ctx,
+    int $page,
+    bool $edit = false
+) use ($products): void {
+
     $keyboard = Keyboard::paginate(
         items: $products,
         page: $page,
@@ -53,10 +58,13 @@ $showProductsPage = static function (Context $ctx, int $page) use ($products): v
 
     $totalPages = max(1, (int) ceil(count($products) / 5));
 
-    $ctx->edit(
-        "Our Products\nPage {$page} of {$totalPages}",
-        ['keyboard' => $keyboard]
-    );
+    $text = "Our Products\nPage {$page} of {$totalPages}";
+
+    if ($edit) {
+        $ctx->edit($text, ['keyboard' => $keyboard]);
+    } else {
+        $ctx->reply($text, ['keyboard' => $keyboard]);
+    }
 };
 $bot->command('products', function (Context $ctx) use ($showProductsPage): void {
     $showProductsPage($ctx, 1);
