@@ -32,9 +32,14 @@ $bot = new Bot($config);
 $translate = static function (Context $ctx, string $key): string {
     $language = $ctx->session()->get('language', 'en');
 
-    $translations = require __DIR__ . '/lang/' . $language . '.php';
+    $translations = [
+        'en' => require __DIR__ . '/lang/en.php',
+        'fa' => require __DIR__ . '/lang/fa.php',
+    ];
 
-    return $translations[$key] ?? $key;
+    return $translations[$language][$key]
+        ?? $translations['en'][$key]
+        ?? $key;
 };
 $products = [
     101 => 'Laptop',
@@ -144,11 +149,17 @@ $bot->command('myname', function (Context $ctx) {
 
     $ctx->reply("Your name is: {$name}");
 });
+$bot->command('language', function (Context $ctx) use ($translate): void {
+    $keyboard = new InlineKeyboard([
+        [
+            Button::callback('🇬🇧 English', 'language:en'),
+            Button::callback('🇮🇷 فارسی', 'language:fa'),
+        ],
+    ]);
 
-$bot->command('language', function (Context $ctx): void {
-    $language = $ctx->session()->get('language', 'en');
-
-    $ctx->reply('Language: ' . $language);
+    $ctx->reply($translate($ctx, 'choose_language'), [
+        'keyboard' => $keyboard,
+    ]);
 });
 
 
