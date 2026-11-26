@@ -27,6 +27,40 @@ try {
 }
 
 $bot = new Bot($config);
+$products = [
+    101 => 'Laptop',
+    102 => 'Mobile Phone',
+    103 => 'Headphones',
+    104 => 'Keyboard',
+    105 => 'Mouse',
+    106 => 'Monitor',
+    107 => 'Webcam',
+    108 => 'Microphone',
+    109 => 'Speaker',
+    110 => 'Tablet',
+    111 => 'Smart Watch',
+    112 => 'Power Bank',
+];
+
+$showProductsPage = static function (Context $ctx, int $page) use ($products): void {
+    $keyboard = Keyboard::paginate(
+        items: $products,
+        page: $page,
+        perPage: 5,
+        prefix: 'products',
+        columns: 2
+    );
+
+    $totalPages = max(1, (int) ceil(count($products) / 5));
+
+    $ctx->edit(
+        "Our Products\nPage {$page} of {$totalPages}",
+        ['keyboard' => $keyboard]
+    );
+};
+$bot->command('products', function (Context $ctx) use ($showProductsPage): void {
+    $showProductsPage($ctx, 1);
+});
 
 // A function that makes a NEW keyboard each time (keyboards are not meant to be shared).
 $mainMenu = static fn () => Keyboard::inline()->row(
