@@ -1,6 +1,7 @@
 <?php
 //this update is for me?
 
+//در این فایل متد کامند ارگومان دستور را استخراج میکند
 declare(strict_types=1);
 
 namespace Botforge\Routing;
@@ -24,6 +25,10 @@ final class Matchers
     }
 
     /** Matches "/start", "/start ref_123", "/Start@MyBot". Gives ['payload' => ...] when there is text after it. */
+    //ارگومان دستوری که از متد ارگز کانتسکت گرفته استخراج میکند میکنه
+    // ینی اگه متد ارگز 
+    // /start ali+123
+    // گرفته باشه مچر بخش دومو استخراج میکنه
     public static function command(string $name): Closure
     {
         $name = strtolower(ltrim($name, '/'));
@@ -34,7 +39,7 @@ final class Matchers
             }
 
             $args = $ctx->args();
-
+            //ارگومان رو با اسم پی لود میفرسته به هندلر
             return $args === [] ? [] : ['payload' => implode(' ', $args)];
         };
     }

@@ -121,6 +121,10 @@ final class Context
      *
      * @return list<string>
      */
+
+    //کارش جدا کردن ارگومان های دستوره
+    // مثلا /start ref_123
+    // خروجی [ref_123]
     public function args(): array
     {
         if ($this->command() === null) {

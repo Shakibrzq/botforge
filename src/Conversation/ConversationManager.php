@@ -153,10 +153,13 @@ final class ConversationManager
 
         // Check whether the conversation is completed.
         if (!isset($steps[$nextStep])) {
-            $conversation->onComplete($context, $data);
-            $session->delete(self::SESSION_KEY);
+        // Remove the active conversation before completion.
+        $session->delete(self::SESSION_KEY);
 
-            return true;
+        // Let the conversation save its final data afterward.
+        $conversation->onComplete($context, $data);
+
+        return true;
         }
 
         $session->set(self::SESSION_KEY, $state);

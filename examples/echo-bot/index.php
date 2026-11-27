@@ -9,8 +9,11 @@ use Botforge\Config;
 use Botforge\Context\Context;
 use Botforge\Keyboard\Button;
 use Botforge\Keyboard\Keyboard;
+use Botforge\Middleware\ThrottleMiddleware;
 use Botforge\Support\Html;
 use DemoBot\RegisterConversation;
+use Botforge\Middleware\RegisteredUserMiddleware;
+use Botforge\Middleware\AdminOnlyMiddleware;
 
 try {
     $config = Config::fromEnv(dirname(__DIR__, 2));
@@ -98,7 +101,7 @@ $showProductsPage = static function (
     int $page,
     bool $edit = false
 ) use ($products, $translate): void {
-
+//تعداد محصولات هر صفحه
     $perPage = 5;
 
     $totalPages = max(
@@ -107,7 +110,12 @@ $showProductsPage = static function (
     );
 
     $page = min(max($page, 1), $totalPages);
-
+//استفاده از متد paginate
+//وظیفه این متد
+//انتخاب محصول صفحه مد نطر
+//ساخت کیبورد
+//ساخت دکمه نکست و پرو
+// ایجاد کال بک دیتا برای هر دکمه
     $keyboard = Keyboard::paginate(
         items: $products,
         page: $page,
@@ -139,11 +147,12 @@ $showProductsPage = static function (
 
 $bot->command('start', function (
     Context $ctx,
+    //اگه کاربر فقط استارت زده باشه پی لود خالیه
     string $payload = ''
 ) use ($mainMenu, $translate): void {
 
     $text = $translate($ctx, 'welcome');
-
+//اگه کاربر استارت و خزعبل زده باشه بات خزعبل رو نمایش میده
     if ($payload !== '') {
         $text .= "\nYou came with the code: " . Html::code($payload);
     }
@@ -162,6 +171,14 @@ $bot->command('help', function (Context $ctx) use ($showHelp): void {
     $showHelp($ctx);
 });
 
+// ==========================================
+// RATE-LIMITED COMMAND
+// ==========================================
+
+$bot->command('ping', function (Context $ctx): void {
+    $ctx->reply('Pong!');
+})->middleware(ThrottleMiddleware::class);
+
 
 // ==========================================
 // REGISTER COMMAND
@@ -170,6 +187,22 @@ $bot->command('help', function (Context $ctx) use ($showHelp): void {
 $bot->command('register', function (Context $ctx) use ($bot): void {
     $bot->startConversation($ctx, new RegisterConversation());
 });
+
+// ==========================================
+// REGISTERED-USER-ONLY COMMAND
+// ==========================================
+
+$bot->command('members', function (Context $ctx): void {
+    $ctx->reply('You are registered and can access this command.');
+})->middleware(new RegisteredUserMiddleware());
+
+// ==========================================
+// ADMIN COMMAND
+// ==========================================
+
+$bot->command('admin', function(Context $ctx):void{
+    $ctx->reply('welcome administrator, you have access to this command');
+})->middleware(AdminOnlyMiddleware::class);
 
 
 // ==========================================
@@ -183,6 +216,7 @@ $bot->command('products', function (
     $showProductsPage($ctx, 1);
 });
 
+//هندلر دکمه های نکست و پرو
 $bot->callback('products:page:{page}', function (
     Context $ctx,
     string $page
@@ -193,6 +227,43 @@ $bot->callback('products:page:{page}', function (
     $showProductsPage($ctx, (int) $page, true);
 });
 
+// ==========================================
+// PRODUCT CALLBACK
+// ==========================================
+
+$bot->callback('products:item:{id}', function (
+    Context $ctx,
+    string $id
+) use ($products): void {
+
+    $productId = (int) $id;
+
+    if (!isset($products[$productId])) {
+        $ctx->answerCallback('Product not found.', true);
+        return;
+    }
+
+    $ctx->answerCallback();
+
+    $productName = $products[$productId];
+
+    $perPage = 5;
+    $productIds = array_keys($products);
+    $index = array_search($productId, $productIds, true);
+
+    $page = intdiv($index, $perPage) + 1;
+
+    $ctx->edit(
+        "Product details\n\n"
+        . "ID: {$productId}\n"
+        . "Name: " . Html::escape($productName),
+        [
+            'keyboard' => Keyboard::inline()->row(
+                Button::callback('« Back to products', 'products:page:' . $page)
+            ),
+        ]
+    );
+});
 
 // ==========================================
 // PROFILE CALLBACK

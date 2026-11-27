@@ -57,8 +57,12 @@ final class RegisterConversation extends Conversation
             return;
         }
 
+        
+
         $name = $data['name'];
         $phone = $data['phone'];
+        // Persist the registration status so RegisteredUserMiddleware can protect routes.
+        $context->session()->set('registered', true);
 
         $context->reply(
             "Registration completed successfully!\n"

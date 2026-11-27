@@ -1,1 +1,1 @@
-a:2:{s:10:"expires_at";N;s:5:"value";a:3:{s:4:"name";s:7:"Shakiba";s:8:"language";s:2:"fa";s:18:"conversation_state";a:4:{s:5:"class";s:28:"DemoBot\RegisterConversation";s:12:"current_step";i:0;s:4:"data";a:0:{}s:13:"last_activity";i:1795711174;}}}
+a:2:{s:10:"expires_at";N;s:5:"value";a:3:{s:4:"name";s:7:"Shakiba";s:8:"language";s:2:"fa";s:10:"registered";b:1;}}
