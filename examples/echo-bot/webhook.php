@@ -19,10 +19,21 @@ try {
     $bot = new Bot(Config::fromEnv(dirname(__DIR__, 2)));
 
     switch ($argv[1] ?? 'info') {
-        case 'set':
-            $bot->registerWebhook();
-            echo 'Webhook is set.' . PHP_EOL;
-            break;
+       case 'set':
+        $bot->registerWebhook([
+            'allowed_updates' => [
+                'message',
+                'edited_message',
+                'channel_post',
+                'callback_query',
+                'inline_query',
+                'my_chat_member',
+                'chat_member',
+            ],
+        ]);
+
+        echo 'Webhook is set.' . PHP_EOL;
+        break;
         case 'delete':
             $bot->removeWebhook();
             echo 'Webhook removed.' . PHP_EOL;
