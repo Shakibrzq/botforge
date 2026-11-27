@@ -23,6 +23,7 @@ use Throwable;
 use Botforge\Storage\StorageInterface;
 use Botforge\Conversation\Conversation;
 use Botforge\Conversation\ConversationManager;
+use Botforge\Api\ForbiddenException;
 
 /**
  * The front door of the framework. You create one Bot, tell it what to do, and call run().
@@ -225,11 +226,42 @@ public function startConversation(
         return $this->router->dispatch($ctx);
     }
 );
-            
-        } catch (Throwable $e) {
-            echo $e->getMessage() . PHP_EOL;
-            echo $e->getTraceAsString() . PHP_EOL;
-        }
+            //با فرض اینکه کاربر بعد از فرستادن استارت بات را بلاک میکند
+            // تلگرام کلاینت پاسخ رو با فوربیدن اکسپشن برمیگردونه
+       } catch (ForbiddenException $e) {
+
+    if ($e->isBlockedByUser()) {
+        $this->logger->warning(
+            'Message delivery failed: user blocked the bot.',
+            [
+                'user_id' => $ctx->from()?->id,
+                'chat_id' => $ctx->chat()?->id,
+            ]
+        );
+
+        return;
+    }
+
+    $this->logger->warning(
+        'Telegram denied the bot action.',
+        [
+            'user_id' => $ctx->from()?->id,
+            'chat_id' => $ctx->chat()?->id,
+            'error' => $e->getMessage(),
+        ]
+    );
+} catch (Throwable $e) {
+
+    $this->logger->error(
+        'An unexpected error occurred while handling an update.',
+        [
+            'exception' => $e::class,
+            'error' => $e->getMessage(),
+            'user_id' => $ctx->from()?->id,
+            'chat_id' => $ctx->chat()?->id,
+        ]
+    );
+}
     }
 
     /**
