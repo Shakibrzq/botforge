@@ -17,4 +17,8 @@ return [
 
     'products_title' => 'Our Products',
     'products_page' => 'Page :page of :total',
+    'products_count' => [
+    'one' => 'You have :count product.',
+    'other' => 'You have :count products.',
+    ],
 ];

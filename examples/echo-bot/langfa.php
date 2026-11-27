@@ -17,4 +17,8 @@ return [
 
     'products_title' => 'محصولات ما',
     'products_page' => 'صفحه :page از :total',
+    'products_count' => [
+    'one' => ':count محصول',
+    'other' => ':count محصول',
+    ],
 ];

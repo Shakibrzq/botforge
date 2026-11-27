@@ -29,22 +29,51 @@ $bot = new Bot($config);
 // TRANSLATION
 // ==========================================
 
+$translations = [
+    'en' => require __DIR__ . '/langen.php',
+    'fa' => require __DIR__ . '/langfa.php',
+];
+
 $translate = static function (
     Context $ctx,
     string $key,
-    array $replace = []
-): string {
+    array $replace = [],
+    ?int $count = null
+) use ($translations): string {
 
-    $language = $ctx->session()->get('language', 'en');
+    $session = $ctx->session();
 
-    $translations = [
-        'en' => require __DIR__ . '/langen.php',
-        'fa' => require __DIR__ . '/langfa.php',
-    ];
+    // Detect the user's language on their first interaction.
+    if (!$session->has('language')) {
+        $telegramLanguage = strtolower(
+            substr($ctx->from()?->languageCode ?? 'en', 0, 2)
+        );
+
+        $language = in_array($telegramLanguage, ['en', 'fa'], true)
+            ? $telegramLanguage
+            : 'en';
+
+        $session->set('language', $language);
+    } else {
+        $language = $session->get('language', 'en');
+
+        if (!is_string($language) || !isset($translations[$language])) {
+            $language = 'en';
+        }
+    }
 
     $text = $translations[$language][$key]
         ?? $translations['en'][$key]
         ?? $key;
+
+    // Handle singular and plural translations.
+    if (is_array($text)) {
+        $pluralKey = $count === 1 ? 'one' : 'other';
+
+        $text = $text[$pluralKey]
+            ?? $text['other']
+            ?? $key;
+    }
 
     foreach ($replace as $placeholder => $value) {
         $text = str_replace(
@@ -124,14 +153,23 @@ $showProductsPage = static function (
         columns: 2
     );
 
-    $title = $translate($ctx, 'products_title');
+$title = $translate($ctx, 'products_title');
 
-    $pageText = $translate($ctx, 'products_page', [
-        'page' => $page,
-        'total' => $totalPages,
-    ]);
+$countText = $translate(
+    $ctx,
+    'products_count',
+    ['count' => count($products)],
+    count($products)
+);
 
-    $text = $title . "\n" . $pageText;
+$pageText = $translate($ctx, 'products_page', [
+    'page' => $page,
+    'total' => $totalPages,
+]);
+
+$text = $title . "\n"
+    . $countText . "\n"
+    . $pageText;
 
     if ($edit) {
         $ctx->edit($text, ['keyboard' => $keyboard]);
