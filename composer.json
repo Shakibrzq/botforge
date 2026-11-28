@@ -20,5 +20,9 @@
     },
     "config": {
         "sort-packages": true
+    },
+    "require-dev": {
+        "phpstan/phpstan": "*",
+        "phpunit/phpunit": "11.5.50"
     }
 }

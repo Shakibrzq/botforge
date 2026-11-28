@@ -1,4 +1,7 @@
 <?php
+// $env:http_proxy = "http://127.0.0.1:12334"
+// >> $env:https_proxy = "http://127.0.0.1:12334"
+// >> $env:ALL_PROXY = "http://127.0.0.1:12334"
 
 declare(strict_types=1);
 
